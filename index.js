@@ -1,7 +1,7 @@
 const express = require('express')
 const path = require('path')
 const bodyParser = require('body-parser')
-const PORT = process.env.PORT || 8080
+const PORT = 8080
 const client = require('./client')
 
 const runServer = async () => {
