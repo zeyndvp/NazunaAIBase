@@ -1,7 +1,23 @@
 const { makeWASocket, DisconnectReason, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys')
 const pino = require('pino')
+const path = require('path')
+const fs = require('fs')
 const env = require('./config.json')
+const plugins = {};
 
+function loadPlugins() {
+    const pluginDir = path.join(__dirname, "plugins");
+    fs.readdirSync(pluginDir).forEach(file => {
+        if (file.endsWith(".js")) {
+            const pluginName = path.basename(file, ".js");
+            plugins[pluginName] = require(path.join(pluginDir, file));
+            console.log(`Plugin ${pluginName} telah dimuat.`);
+        }
+    });
+}
+
+loadPlugins();
+plugins[out.type](m, nazu)
 async function connectToWhatsapp() {
     let checkStatusPiring;
     if (env.pairing.status == true) {
@@ -10,7 +26,7 @@ async function connectToWhatsapp() {
         checkStatusPiring = true
     }
     const { state, saveCreds } = await useMultiFileAuthState('nazuna');
-    const sock = makeWASocket({
+    global.zuna  = makeWASocket({
         logger: pino({
             level: "fatal"
         }),
@@ -24,7 +40,7 @@ async function connectToWhatsapp() {
         syncFullHistory: false,
         generateHighQualityLinkPreview: true
     })
-    if (env.pairing.status && !sock.authState.creds.registered) {
+    if (env.pairing.status && !nazu.authState.creds.registered) {
         // let phoneNumber = "";
         // if (!phoneNumber) {
         //     phoneNumber = await new Promise((resolve) => require('readline').createInterface({ 
@@ -34,11 +50,11 @@ async function connectToWhatsapp() {
         // }
         console.log("Get code...")
         setTimeout(async () => {
-            const code = await sock.requestPairingCode(env.pairing.number)
+            const code = await nazu.requestPairingCode(env.pairing.number)
             console.log(code)
         }, 5000);
     }
-    sock.ev.on("connection.update", (update) => {
+    nazu.ev.on("connection.update", (update) => {
         const { connection, lastDisconnect } = update;
         if ( connection === "close" ) {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
@@ -52,16 +68,16 @@ async function connectToWhatsapp() {
             console.log("Success Connect")
         }
     })
-    sock.ev.on("creds.update", saveCreds);
+    nazu.ev.on("creds.update", saveCreds);
 
     // Event Messages
-    sock.ev.on("messages.upsert", async ({ messages }) => {
+    nazu.ev.on("messages.upsert", async ({ messages }) => {
         global.m = messages[0];
         if (!m.message) return;
         // Message Jid
-        m.jid = m.key.remoteJid;
+        m.chat = m.key.remoteJid;
         // Jika Sebuah Status Kita Tambahkan Auto Read Status
-        if (m.jid === "status@broadcast") return sock.readMessages([m.key]);
+        if (m.chat === "status@broadcast") return nazu.readMessages([m.key]);
         // Message From Group
         m.isGroup = m.jid.endsWith("@g.us");
         // User Jid || Jika Dari Group Kita Ambil Dari Participant Namun Jika Bukan Dari Group, Kita Ambil Dari remoteJid
@@ -81,20 +97,20 @@ async function connectToWhatsapp() {
         ? m.message.imageMessage.caption 
         : "";
         if (!m.fromMe || m.text !== 'p') return
-        const sendMessage = await sock.sendMessage(m.jid, { text: 'https://github.com/zeyndvp'}, { quoted: m })
+        const sendMessage = await nazu.sendMessage(m.chat, { text: 'https://github.com/zeyndvp'}, { quoted: m })
         console.log(m)
     })
 
-    sock.ev.on("group-participants.update", (group) => {
+    nazu.ev.on("group-participants.update", (group) => {
         // if (group || group.action == "add") {
-        //     sock.sendMessage(group.id, { text: "Selamat datang di indomaret @" + group.participants[0]})
+        //     nazu.sendMessage(group.id, { text: "Selamat datang di indomaret @" + group.participants[0]})
         // }
         console.log(group)
     })
     
-    sock.ev.on("call", (call) => {
+    nazu.ev.on("call", (call) => {
         if (call[0].status === "offer") {
-            sock.rejectCall(call[0].id, call[0].from)
+            nazu.rejectCall(call[0].id, call[0].from)
             console.log(call)
         }
     })
